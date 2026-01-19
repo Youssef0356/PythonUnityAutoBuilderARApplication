@@ -28,44 +28,50 @@ Before starting, you must configure the build script with your local environment
 The generation of the application structure is automated via a Python script.
 
 1.  **Create a Workspace**: Create a new folder anywhere on your computer (name it after your project, e.g., `MyNewARProject`).
-2.  **Setup Scripts**: Place the `Generate.py` script .
+2.  **Setup Scripts**: Place the `Generate.py` script inside this folder.
 3.  **Run Automation**: 
     - Run the `Generate.py` script.
-    - **Drop your `.glb` 3D model** into the folder where the script is located and your `QRCode.png` (with the exact this name ) inside this folder.
-4.  **Automatic Processing**: The script will automatically:
-    - Create a dedicated Maquette folder.
-    - Move the `.glb` and `QRCode.png` inside it.
-    - Generate a `Data.json` configuration file.
-    - Create an `Assets/` directory with subfolders for every part found in the 3D model.
+    - **Drop your `.glb` 3D model** into the same folder.
+4.  **Automatic Processing**: The script will detect the GLB and automatically:
+    - Create a main project folder named after the GLB file.
+    - Create the required subfolder structure (`ModelInfos` and `ModelParts`).
+    - Move the `.glb` file into `ModelInfos/3DMODEL`.
+    - Generate an initial `Data.json`.
 
 ---
 
 ## 📝 Phase 3: Content & Descriptions
 
-Now, fill in the details for each part of your model.
+Once the folders are created, you need to manually place your assets in the correct locations.
 
-### � 1. Part Descriptions (Excel)
-Inside each part's subfolder (under `Assets/`), an Excel file is generated.
-- **Column A**: Enter the **Key** (e.g., `Marque`, `Type`, `Voltage`).
-- **Column B**: Enter the **Value** (e.g., `Siemens`, `Automate`, `24V`).
-- Save and close the Excel file when finished.
+### 📍 1. Main Project Assets (ModelInfos)
+Navigate to the `ModelInfos` folder inside your project directory.
+- **QRCode**: Place your `QRCode.png` image inside the `QRCode` folder.
+- **Video**: Place your presentation video (mp4, avi, etc.) inside the `Video` folder.
+- **Button Images**: Place UI images associated with the main model in the `Button_Images` folder.
+- **Description**: Edit the generated Excel file in the `Description` folder to add global metadata.
 
-### 🖼️ 2. Part Images
-If you want an image to appear when a specific part is clicked in the AR app:
-- Drop the image file into that part's specific subfolder.
-- Ensure the image name is clear and correct.
+### 🧩 2. Part Assets (ModelParts)
+Navigate to the `ModelParts` folder. You will see a hierarchy matching your 3D model.
+For each part folder, you can add:
+- **Video**: A video specific to that part inside its `Video` folder.
+- **Button Images**: Images to show for that part inside its `Button_Images` folder.
+- **Description**: Edit the Excel file in the `Description` folder to add part-specific details (e.g., Key: `Material`, Value: `Steel`).
+
+> [!NOTE]
+> The script watches for changes. If you add a file, `Data.json` will automatically regenerate.
 
 ---
 
 ## ✅ Phase 4: Final Validation Checklist
 
-Before building, verify that the following files are present in your Maquette folder:
+Before building, verify that the following files are present in your Project folder:
 
-- [ ] **Folder Structure**: Everything is organized in your Maquette directory.
-- [ ] **Model**: The `.glb` file is inside the folder.
-- [ ] **Target**: The `QRCode.png` is inside the folder.
-- [ ] **Build Script**: The `build_maquette.bat` file has been moved/copied into this folder.
-- [ ] **Assets**: Images inside subfolders are named correctly.
+- [ ] **Folder Structure**: `ModelInfos` and `ModelParts` exist.
+- [ ] **Model**: The `.glb` file is inside `ModelInfos/3DMODEL`.
+- [ ] **Target**: The `QRCode.png` is inside `ModelInfos/QRCode`.
+- [ ] **Build Script**: The `build_maquette.bat` file is accessible (root or project folder).
+- [ ] **Assets**: Images and videos are placed in their respective `Button_Images` or `Video` subfolders.
 
 ---
 
