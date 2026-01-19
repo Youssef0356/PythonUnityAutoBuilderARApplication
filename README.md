@@ -31,7 +31,7 @@ The generation of the application structure is automated via a Python script.
 2.  **Setup Scripts**: Place the `Generate.py` script .
 3.  **Run Automation**: 
     - Run the `Generate.py` script.
-    - **Drop your `.glb` 3D model** into the folder where the script is located and your `QRCode.png` inside this folder.
+    - **Drop your `.glb` 3D model** into the folder where the script is located and your `QRCode.png` (with the exact this name ) inside this folder.
 4.  **Automatic Processing**: The script will automatically:
     - Create a dedicated Maquette folder.
     - Move the `.glb` and `QRCode.png` inside it.
