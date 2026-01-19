@@ -66,22 +66,26 @@ echo       - Data.json: Found
 
 REM Check for GLB file
 set "GLB_FOUND=0"
-for %%G in ("%MAQUETTE_PATH%\*.glb") do (
+for %%G in ("%MAQUETTE_PATH%\ModelInfos\3DMODEL\*.glb") do (
     echo       - GLB Model: %%~nxG
     set "GLB_FOUND=1"
 )
 if "%GLB_FOUND%"=="0" (
-    echo [WARNING] No .glb file found in maquette folder
+    echo [ERROR] No .glb file found in %MAQUETTE_PATH%\ModelInfos\3DMODEL\
+    pause
+    exit /b 1
 )
 
 REM Check for QR code
 set "QR_FOUND=0"
-for %%Q in ("%MAQUETTE_PATH%\QRCode.*") do (
+for %%Q in ("%MAQUETTE_PATH%\ModelInfos\QRCode\QRCode.*") do (
     echo       - QR Code: %%~nxQ
     set "QR_FOUND=1"
 )
 if "%QR_FOUND%"=="0" (
-    echo [WARNING] No QRCode.* file found in maquette folder
+    echo [ERROR] No QRCode.* file found in %MAQUETTE_PATH%\ModelInfos\QRCode\
+    pause
+    exit /b 1
 )
 
 REM Ensure output directory exists

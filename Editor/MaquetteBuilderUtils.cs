@@ -13,6 +13,9 @@ public static class MaquetteBuilderUtils
     // Cache for file lookups: FileName -> List of full paths
     private static Dictionary<string, List<string>> _fileCache;
 
+    // Helper to ensure paths are always forward slashes
+    private static string NormalizePath(string path) => path?.Replace("\\", "/").TrimStart('/');
+
     /// <summary>
     /// Clears all content in StreamingAssets folder before importing new data
     /// </summary>
@@ -135,25 +138,7 @@ public static class MaquetteBuilderUtils
         Directory.CreateDirectory(modelsPath);
         Directory.CreateDirectory(mediaPath);
 
-        // Copy QR code - scan for QRCode.* in root only (fast enough without cache, or use cache)
-        if (!File.Exists(Path.Combine(sourcePath, "Data.json")))
-        {
-            // Use cache to find QRCode.* files
-            // Iterate known extensions or just pattern match logic manually since dictionary is exact name
-            // Actually, for patterns, we still might need Directory.GetFiles OR iterate the dictionary keys
-            // But since "QRCode.*" is usually in the root, let's just stick to Directory.GetFiles for the ROOT check only
-            // properly.
-             
-            string[] qrImages = Directory.GetFiles(sourcePath, "QRCode.*", SearchOption.TopDirectoryOnly);
-            if (qrImages.Length > 0)
-            {
-                string extension = Path.GetExtension(qrImages[0]);
-                string targetFileName = $"{maquetteName.Replace(" ", "")}QRCode{extension}";
-                string destPath = Path.Combine(mediaPath, targetFileName);
-                File.Copy(qrImages[0], destPath, true);
-                Debug.Log($"[MaquetteBuilderUtils] Copied QR: QRCode{extension} -> {targetFileName}");
-            }
-        }
+        // REMOVED: Redundant QR copy. We now handle this inside TransformAndSaveConfig to ensure it matches the data path.
 
         // Copy Assets folder from Source to StreamingAssets/Media
         // This is a bulk copy, cache doesn't help much here as we want structure
@@ -171,16 +156,7 @@ public static class MaquetteBuilderUtils
             CopyDirectory(sourceAssetsPath, mediaPath, excluded);
         }
 
-        // Copy any GLB model file - generic naming
-        // Use Root search which is fast
-        string[] glbFiles = Directory.GetFiles(sourcePath, "*.glb", SearchOption.TopDirectoryOnly);
-        if (glbFiles.Length > 0)
-        {
-            string targetFileName = $"{maquetteName.Replace(" ", "")}.glb";
-            string destModelPath = Path.Combine(modelsPath, targetFileName);
-            File.Copy(glbFiles[0], destModelPath, true);
-            Debug.Log($"[MaquetteBuilderUtils] Copied model: {Path.GetFileName(glbFiles[0])} -> {targetFileName}");
-        }
+        // REMOVED: Redundant GLB copy. We now handle this inside TransformAndSaveConfig to ensure it respects the folder structure.
 
         // Transform JSON - Data.json to equipment_config.json
         string sourceJsonPath = Path.Combine(sourcePath, "Data.json");
@@ -224,36 +200,32 @@ public static class MaquetteBuilderUtils
             equipment.qr_image_url = FixPath(item.qr_image_url);
 
             // Copy QR image from source - FAST LOOKUP
-            try
-            {
-                string qrRelative = item.qr_image_url ?? string.Empty;
-                string qrFileName = Path.GetFileName(qrRelative);
+                string qrSourceRel = item.qr_image_url ?? string.Empty;
+                string qrFileName = Path.GetFileName(qrSourceRel);
                 if (!string.IsNullOrEmpty(qrFileName))
                 {
-                    // Try exact relative path first
-                    string qrSourcePath = Path.Combine(sourcePath, qrRelative);
-                    if (!File.Exists(qrSourcePath))
-                    {
-                        // Fallback: search using CACHE
-                        qrSourcePath = FindFileInCache(qrFileName);
-                    }
-
-                    if (!string.IsNullOrEmpty(qrSourcePath) && File.Exists(qrSourcePath))
-                    {
-                        string qrDestPath = Path.Combine(mediaPath, qrFileName);
-                        File.Copy(qrSourcePath, qrDestPath, true);
-                    }
+                     // Destination: StreamingAssets/Media/ModelInfos/QRCode/QRCode.png (matches FixPath)
+                     // FixPath returns "Media/" + relative. 
+                     // Here we want to copy the file to that location.
+                     string qrDestRel = FixPath(qrSourceRel);
+                     string qrFullDest = Path.Combine(Application.streamingAssetsPath, qrDestRel);
+                     
+                     CopyFileToDest(sourcePath, qrSourceRel, qrFullDest);
                 }
-            }
-            catch (Exception e)
-            {
-                Debug.LogWarning($"[MaquetteBuilderUtils] Failed to copy QR image '{item.qr_image_url}': {e.Message}");
-            }
 
             equipment.model = new ModelDataDto();
             equipment.model.id = item.name;
             equipment.model.name = item.name;
-            equipment.model.modelFileUrl = "Models/" + Path.GetFileName(item.modelFileUrl);
+            
+            // Handle Model File Copying (Structured)
+            string modelSourceRel = item.modelFileUrl ?? string.Empty;
+            string modelDestRel = "Models/" + NormalizePath(modelSourceRel); // e.g. Models/ModelInfos/3DMODEL/Name.glb
+            equipment.model.modelFileUrl = modelDestRel;
+
+            if (!string.IsNullOrEmpty(modelSourceRel))
+            {
+                CopyFileToDest(sourcePath, modelSourceRel, Path.Combine(Application.streamingAssetsPath, modelDestRel));
+            }
             
             // Extract Description
             List<ServerDescription> descriptions = null;
@@ -316,6 +288,14 @@ public static class MaquetteBuilderUtils
                 videoPath = item.parts[0].video;
             }
             equipment.model.video = !string.IsNullOrEmpty(videoPath) ? FixPath(videoPath) : string.Empty;
+
+            if (!string.IsNullOrEmpty(videoPath))
+            {
+                 // Destination: StreamingAssets/Media/ModelInfos/Video/... 
+                 string videoDestRel = FixPath(videoPath);
+                 string videoFullDest = Path.Combine(Application.streamingAssetsPath, videoDestRel);
+                 CopyFileToDest(sourcePath, videoPath, videoFullDest);
+            }
             
             // Extract datasheet
             string datasheetPath = null;
@@ -379,6 +359,14 @@ public static class MaquetteBuilderUtils
             p.description = string.Join("\n", p.descriptionItems.Select(d => $"{d.key}: {d.value}"));
 
             p.video = !string.IsNullOrEmpty(sp.video) ? FixPath(sp.video) : string.Empty;
+
+            if (!string.IsNullOrEmpty(sp.video))
+            {
+                 string videoDestRel = FixPath(sp.video);
+                 string videoFullDest = Path.Combine(Application.streamingAssetsPath, videoDestRel);
+                 CopyFileToDest(sourcePath, sp.video, videoFullDest);
+            }
+
             p.datasheetUrl = sp.datasheet;
 
             // Map image buttons
@@ -675,5 +663,37 @@ public static class MaquetteBuilderUtils
     private class AppConfigWrapper
     {
         public List<AREquipmentFullDto> equipment;
+    }
+
+    // Rewrite CopyFileFromSource to be more generic helper
+    private static void CopyFileToDest(string sourceRoot, string sourceRelPath, string fullDestPath)
+    {
+        if (string.IsNullOrEmpty(sourceRelPath)) return;
+        
+        // Find source file 
+        string sourceFile = Path.Combine(sourceRoot, sourceRelPath);
+        if (!File.Exists(sourceFile))
+        {
+            // Try cache fallback
+            sourceFile = FindFileInCache(Path.GetFileName(sourceRelPath));
+        }
+
+        if (!File.Exists(sourceFile)) return;
+
+        try 
+        {
+            string dir = Path.GetDirectoryName(fullDestPath);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            
+            if (!File.Exists(fullDestPath))
+            {
+                File.Copy(sourceFile, fullDestPath, true);
+                // Debug.Log($"[MaquetteBuilderUtils] Copied {Path.GetFileName(sourceFile)} -> {fullDestPath}");
+            }
+        }
+        catch (Exception e)
+        {
+             Debug.LogWarning($"[MaquetteBuilderUtils] Failed to copy {sourceRelPath}: {e.Message}");
+        }
     }
 }
